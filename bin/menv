@@ -2,7 +2,7 @@
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="0.4"
+VERSION="0.5"
 MENV_PROFILE=".menv_profile"
 
 # creating the menv home if not exists
