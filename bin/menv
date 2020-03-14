@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+set -e
+[[ -n "$MENV_DEBUG" ]] && set -x
+
+VERSION="0.2"
+MENV_PROFILE=".menv_profile"
+
+USAGE=$(
+cat <<EOF
+
+Set a Maven environment...
+menv [OPTIONS ...]
+-h                This message
+-v                Show version        
+-p VALUE          Sets the "settings.xml.VALUE" as the wanted profile for this folder and underlying folders
+-d                Deletes the set menv profile for this directory (if exists)
+-l                Lists all possible profiles you can choose from.
+-c                Creates the "~/.menv/bin/mvn" file again and checks path.
+
+It will also create a new mvn command in the ~/.menv/bin folder which should be put first on your path
+e.g. export PATH=\${HOME}/.menv/bin:\$PATH
+
+Naming convention:
+
+- ~/.menv/settings.xml.<NAME_OF_PROFILE>
+  These files will be seen as possible profiles you can set
+  They should be your custom settings.xml files
+- ~/.menv/<NAME_OF_PROFILE>.maven_opts
+  These files will be seen as custom MAVEN_OPTS for the profiles.
+  it can contain 1 line with all the MAVEN_OPTS in it
+EOF
+)
+
+die() {
+    echo >&2 "[ERROR] The job ended in error."
+    echo "[ERROR] $@" 
+    exit 1
+}
+
+save_orig_maven_path() {
+    type -a mvn | head -1 | sed 's/mvn is //g' | sed 's/an alias for //g'>${HOME}/.menv/.mvn_path
+}
+
+save_orig_settings_xml() {
+    if [[ -f "${HOME}/.m2/settings.xml" ]]; then
+        cp "${HOME}/.m2/settings.xml" "${HOME}/.menv/settings.xml.default"
+    fi
+    save_orig_maven_path
+    touch "${HOME}/.menv/.activated"
+}
+
+create_mvn() {
+rm -f "${HOME}/.menv/bin/mvn" 2>/dev/null
+save_orig_maven_path
+cat <<'EOT' > "${HOME}/.menv/bin/mvn"
+#!/usr/bin/env bash
+# Summary: Detect the file that sets the current jenv jvm options
+set -e
+[ -n "$MENV_DEBUG" ] && set -x
+
+find_local_version_file() {
+  local root="$1"
+  while [ -n "$root" ]; do
+    if [ -e "${root}/.menv_profile" ]; then
+      MENV_PROFILE="${root}/.menv_profile"
+      return
+     fi
+    root="${root%/*}"
+  done
+}
+
+find_local_version_file "$MENV_DIR"
+[ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
+
+if [[ ! -f "${HOME}/.menv/.mvn_path" ]]; then
+    echo "No original maven path has been set."
+    echo "Please run \"menv -c\" to set it right"
+    exit 1
+else
+    MVN=$(<${HOME}/.menv/.mvn_path)
+fi
+
+if [[ -f "${MENV_PROFILE}" ]]; then
+    PROFILE=$(<"${MENV_PROFILE}")
+    if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
+        echo "Building with profile: ${PROFILE}"
+        if [[ -f "${HOME}/.menv/${PROFILE}.maven_opts" ]]; then
+			MAVEN_OPTS_ORIG=$MAVEN_OPTS
+			export MAVEN_OPTS=$(<"${HOME}/.menv/${PROFILE}.maven_opts")
+			echo "Using profile specific MAVEN_OPTS:"
+			echo ${MAVEN_OPTS}
+		fi
+        exec ${MVN} --settings "${HOME}/.menv/settings.xml.${PROFILE}" --global-settings "${HOME}/.menv/settings.xml.${PROFILE}" $*
+		export MAVEN_OPTS=$MAVEN_OPTS_ORIG
+    else
+        echo "[WARNING] ${PROFILE} was set but not found."
+        echo "[WARNING] building with default profile"
+        exec ${MVN} $*
+    fi
+else
+    echo "Building with default profile..."
+    exec ${MVN} $*
+fi
+
+EOT
+chmod +x "${HOME}/.menv/bin/mvn"
+echo "mvn command created."
+}
+
+list_settings() {
+    ls ${HOME}/.menv/settings.xml.*|sed "s/^.*settings.xml.//g"
+}
+
+check_path() {
+    if [[ ":$PATH:" == *":${HOME}/.menv/bin:"* ]]; then
+      echo "Your path is correctly set"
+      if [[ ! -z "$(alias|grep "^mvn=")" ]]; then
+          echo "Note that you also have an alias set for 'mvn' which could disrupt"
+          echo "this flow. Please remove the alias..."
+      fi
+    else
+      echo "Please add the following line to the end of your profile"
+      echo "(e.g.: .bashrc / .bash_profile / .zshrc / .profile):"
+      echo "export PATH=\${HOME}/.menv/bin:\$PATH"
+      echo "or add \${HOME}/.menv/bin to your path yourself"
+    fi
+}
+
+# Parse command line options.
+while getopts hvp:dlc OPT; do
+    case "$OPT" in
+        h)
+            echo "$USAGE"
+            exit 0
+            ;;
+        v)
+            echo "`basename $0` (c) 2020 by @ivonet"
+            echo "Version ${VERSION}"
+            exit 0
+            ;;
+        d)
+            rm -f "${MENV_PROFILE}" 2>/dev/null
+            exit 0
+            ;;    
+        p)
+            PROFILE=$OPTARG
+            ;;
+        l)
+            list_settings
+            exit 0
+            ;;
+        c)
+            create_mvn
+            check_path
+            exit 0
+            ;;
+        \?)
+            # getopts issues an error message
+            die "You should...\n$USAGE"
+            ;;
+    esac
+done
+
+# creating the menv home if not exists
+if [[ ! -d "${HOME}/.menv" ]]; then
+    mkdir -p "${HOME}/.menv/bin" 2>/dev/null
+    create_mvn
+fi
+
+# initial save of the original settings.xml
+if [[ ! -f "${HOME}/.menv/.activated" ]] && [[ ! -f "${HOME}/.menv/settings.xml.default" ]] ; then
+    save_orig_settings_xml
+fi
+
+# you must do something
+if [[ -z "${PROFILE}" ]]; then
+    die "Please provide a profile or other option...$USAGE"
+fi
+
+if [[ ! -z "${PROFILE}" ]]; then
+    if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
+        echo "Setting current maven project to ${PROFILE}..."
+        echo "${PROFILE}">"${MENV_PROFILE}"
+    else
+        echo "[ERROR] The file \"${HOME}/.menv/settings.xml.${PROFILE}\" does not exist."
+        echo "Please use one of the following options:"
+        list_settings
+        echo "Or create a new settings.xml.PROFILE file in ${HOME}/.menv"
+        exit 1
+    fi
+fi
+
+check_path
+

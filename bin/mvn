@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Summary: Detect the file that sets the current jenv jvm options
+set -e
+[ -n "$MENV_DEBUG" ] && set -x
+
+find_local_version_file() {
+  local root="$1"
+  while [ -n "$root" ]; do
+    if [ -e "${root}/.menv_profile" ]; then
+      MENV_PROFILE="${root}/.menv_profile"
+      return
+     fi
+    root="${root%/*}"
+  done
+}
+
+find_local_version_file "$MENV_DIR"
+[ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
+
+if [[ ! -f "${HOME}/.menv/.mvn_path" ]]; then
+    echo "No original maven path has been set."
+    echo "Please run \"menv -c\" to set it right"
+    exit 1
+else
+    MVN=$(<${HOME}/.menv/.mvn_path)
+fi
+
+if [[ -f "${MENV_PROFILE}" ]]; then
+    PROFILE=$(<"${MENV_PROFILE}")
+    if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
+        echo "Building with profile: ${PROFILE}"
+        if [[ -f "${HOME}/.menv/${PROFILE}.maven_opts" ]]; then
+			MAVEN_OPTS_ORIG=$MAVEN_OPTS
+			export MAVEN_OPTS=$(<"${HOME}/.menv/${PROFILE}.maven_opts")
+			echo "Using profile specific MAVEN_OPTS:"
+			echo ${MAVEN_OPTS}
+		fi
+        exec ${MVN} --settings "${HOME}/.menv/settings.xml.${PROFILE}" --global-settings "${HOME}/.menv/settings.xml.${PROFILE}" $*
+		export MAVEN_OPTS=$MAVEN_OPTS_ORIG
+    else
+        echo "[WARNING] ${PROFILE} was set but not found."
+        echo "[WARNING] building with default profile"
+        exec ${MVN} $*
+    fi
+else
+    echo "Building with default profile..."
+    exec ${MVN} $*
+fi
+
