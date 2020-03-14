@@ -5,3 +5,5 @@ settings.xml.*
 node_modules
 .DS_Store
 target
+.mvn_path
+.activated
