@@ -1,0 +1,7 @@
+settings.xml.*
+*.maven_opts
+.idea
+*.iml
+node_modules
+.DS_Store
+target
