@@ -2,7 +2,7 @@
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="0.6"
+VERSION="0.8"
 MENV_PROFILE=".menv_profile"
 
 install_menv_mvn() {
