@@ -2,7 +2,7 @@
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="0.2"
+VERSION="0.3"
 MENV_PROFILE=".menv_profile"
 
 USAGE=$(
@@ -38,6 +38,10 @@ die() {
 }
 
 save_orig_maven_path() {
+    check=$(which mvn)
+    if [[ -z "${check}" ]]; then
+        die "Please install maven first..."
+    fi
     type -a mvn | head -1 | sed 's/mvn is //g' | sed 's/an alias for //g'>${HOME}/.menv/.mvn_path
 }
 
