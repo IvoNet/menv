@@ -9,7 +9,6 @@ install_menv_mvn() {
     rm -f /usr/local/bin/mvn 2>/dev/null
     menv_mvn="$(find $(brew --cellar)/menv -depth 1 -type d|sort|tail -1)/libexec/bin/mvn"
     ln -s "${menv_mvn}" /usr/local/bin/mvn
-    echo "menv mvn installed..."
 }
 install_menv_mvn
 
