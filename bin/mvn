@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Summary: Detect the file that sets the current jenv jvm options
 set -e
 [ -n "$MENV_DEBUG" ] && set -x
 
@@ -14,16 +13,15 @@ find_local_version_file() {
   done
 }
 
+if [[ -f "$(pwd)/mvnw" ]]; then
+    MVN="$(pwd)/mvnw"
+else
+    # Get the latest installed maven from HomeBrew's cellar
+    MVN="$(find $(brew --cellar)/maven -depth 1 -type d|sort|tail -1)/bin/mvn"
+fi
+
 find_local_version_file "$MENV_DIR"
 [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
-
-if [[ ! -f "${HOME}/.menv/.mvn_path" ]]; then
-    echo "No original maven path has been set."
-    echo "Please run \"menv -c\" to set it right"
-    exit 1
-else
-    MVN=$(<${HOME}/.menv/.mvn_path)
-fi
 
 if [[ -f "${MENV_PROFILE}" ]]; then
     PROFILE=$(<"${MENV_PROFILE}")
