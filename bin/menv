@@ -2,7 +2,7 @@
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="0.5"
+VERSION="0.6"
 MENV_PROFILE=".menv_profile"
 
 # creating the menv home if not exists
@@ -87,6 +87,7 @@ while getopts hvp:dlc OPT; do
             ;;
         i)
             install_menv_mvn
+            exit 0
             ;;
         \?)
             # getopts issues an error message
