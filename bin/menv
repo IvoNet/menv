@@ -63,7 +63,7 @@ install_menv_mvn() {
 }
 
 # Parse command line options.
-while getopts hvp:dlc OPT; do
+while getopts hvp:dlci OPT; do
     case "$OPT" in
         h)
             echo "$USAGE"
