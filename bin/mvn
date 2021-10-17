@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+
+bold="$(tput bold)"
+reset="$(tput sgr0)"
+green="$(tput setaf 2)"
+yellow="$(tput setaf 3)"
+blue="$(tput setaf 4)"
+magenta="$(tput setaf 5)"
+
 set -e
 [ -n "$MENV_DEBUG" ] && set -x
 
@@ -26,22 +34,20 @@ find_local_version_file "$MENV_DIR"
 if [[ -f "${MENV_PROFILE}" ]]; then
     PROFILE=$(<"${MENV_PROFILE}")
     if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
-        echo "Building with profile: ${PROFILE}"
+        echo "Building with profile: [${magenta}${bold}${PROFILE}${reset}]"
         if [[ -f "${HOME}/.menv/${PROFILE}.maven_opts" ]]; then
-			MAVEN_OPTS_ORIG=$MAVEN_OPTS
-			export MAVEN_OPTS=$(<"${HOME}/.menv/${PROFILE}.maven_opts")
-			echo "Using profile specific MAVEN_OPTS:"
-			echo ${MAVEN_OPTS}
-		fi
+			      MAVEN_OPTS_ORIG=$MAVEN_OPTS
+      			export MAVEN_OPTS=$(<"${HOME}/.menv/${PROFILE}.maven_opts")
+			      echo "Using profile specific MAVEN_OPTS:"
+			      echo ${MAVEN_OPTS}
+		    fi
         exec ${MVN} --settings "${HOME}/.menv/settings.xml.${PROFILE}" --global-settings "${HOME}/.menv/settings.xml.${PROFILE}" $*
-		export MAVEN_OPTS=$MAVEN_OPTS_ORIG
+		    export MAVEN_OPTS=$MAVEN_OPTS_ORIG
     else
-        echo "[WARNING] ${PROFILE} was set but not found."
-        echo "[WARNING] building with default profile"
-        exec ${MVN} $*
+        echo "[${yellow}${bold}WARNING${reset}] Profile [${green}${bold}${PROFILE}${reset}] was set but not found. Building with profile: [${green}${bold}default${reset}]"
+        exec ${MVN} "$@"
     fi
 else
-    echo "Building with default profile..."
-    exec ${MVN} $*
+    echo "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}default${reset}]"
+    exec ${MVN} "$@"
 fi
-
