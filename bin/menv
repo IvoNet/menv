@@ -8,7 +8,7 @@ green="$(tput setaf 2)"
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="0.9"
+VERSION="1.1"
 MENV_PROFILE=".menv_profile"
 
 install_menv_mvn() {

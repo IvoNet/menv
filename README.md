@@ -4,23 +4,26 @@ Environment setter for maven.
 
 With this command you can set a folder (structure) to a specific maven profile and maven opts.
 
+# Prerequisites
+
+- MacOS based computer
+- maven already installed through [brew](https://brew.sh/)
 
 # Install
 
-With [Homebrew](https://brew.sh)
+- With [Homebrew](https://brew.sh)
+- Please read the instructions carefully after installation
 
 ```bash
 brew tap ivonet/cli
 brew install menv
 ```
 
-
 # Usage
 
 ```bash
 brew -h
 ```
-
 
 # License
 
@@ -37,3 +40,8 @@ brew -h
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
+
+# Special thanks
+
+- [TheCheerfulDev](https://github.com/TheCheerfulDev/) for the nice 
+  improvements.
