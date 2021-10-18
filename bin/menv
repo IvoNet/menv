@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
+
+bold="$(tput bold)"
+reset="$(tput sgr0)"
+red="$(tput setaf 1)"
+green="$(tput setaf 2)"
+
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="0.8"
+VERSION="0.9"
 MENV_PROFILE=".menv_profile"
 
 install_menv_mvn() {
@@ -19,15 +25,15 @@ fi
 
 USAGE=$(
 cat <<EOF
+Usage: menv <command> [<args>]
 
-Set a Maven environment...
-menv [OPTIONS ...]
--h                This message
--v                Show version        
--p VALUE          Sets the "settings.xml.VALUE" as the wanted profile for this folder and underlying folders
--d                Deletes the set menv profile for this directory (if exists)
--l                Lists all possible profiles you can choose from.
--i                Initialize menv for mvn
+-a | active                   Show active profile.
+-h | help                     Help information.
+-v | version                  Show version information.
+-p <arg> | profile <arg>      Sets the "settings.xml.<arg>" as the wanted profile for this folder and underlying folders.
+-d | delete                   Deletes the set menv profile for this directory (if exists).
+-l | list                     Lists all possible profiles you can choose from.
+-i | install                  Initialize menv for mvn.
 
 Naming convention:
 
@@ -41,8 +47,8 @@ EOF
 )
 
 die() {
-    echo >&2 "[ERROR] The job ended in error."
-    echo "[ERROR] $@" 
+    echo >&2 "[${red}${bold}ERROR${reset}] The job ended in error."
+    echo -e "[${red}${bold}ERROR${reset}] $@"
     exit 1
 }
 
@@ -62,41 +68,62 @@ list_settings() {
     ls ${HOME}/.menv/settings.xml.*|sed "s/^.*settings.xml.//g"
 }
 
+find_local_version_file() {
+  local root="$1"
+  while [ -n "$root" ]; do
+    if [ -e "${root}/.menv_profile" ]; then
+      CURRENT_PROFILE_FILE="${root}/.menv_profile"
+      return
+     fi
+    root="${root%/*}"
+  done
+}
 
-# Parse command line options.
-while getopts hvp:dlci OPT; do
-    case "$OPT" in
-        h)
-            echo "$USAGE"
-            exit 0
-            ;;
-        v)
-            echo "`basename $0` (c) 2020 by @ivonet"
-            echo "Version ${VERSION}"
-            exit 0
-            ;;
-        d)
-            rm -f "${MENV_PROFILE}" 2>/dev/null
-            exit 0
-            ;;    
-        p)
-            PROFILE=$OPTARG
-            ;;
-        l)
-            list_settings
-            exit 0
-            ;;
-        i)
-            install_menv_mvn
-            exit 0
-            ;;
-        \?)
-            # getopts issues an error message
-            die "You should...\n$USAGE"
-            ;;
-    esac
-done
+print_active_profile() {
+  find_local_version_file "$PWD"
 
+  if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
+      ACTIVE_PROFILE=$(<"${MENV_PROFILE}")
+    else
+      ACTIVE_PROFILE=default
+  fi
+
+  echo "Active profile: [${green}${bold}${ACTIVE_PROFILE}${reset}]"
+}
+
+case "$1" in
+    active|-a)
+        print_active_profile
+        exit 0
+        ;;
+    delete|-d)
+        rm -f "${MENV_PROFILE}" 2>/dev/null
+        exit 0
+        ;;
+    help|-h)
+        echo "$USAGE"
+        exit 0
+        ;;
+    install|-i)
+        install_menv_mvn
+        exit 0
+        ;;
+    list|-l)
+        list_settings
+        exit 0
+        ;;
+    profile|-p)
+        PROFILE=$2
+        ;;
+    version|-v)
+        echo "$(basename "$0") (c) 2021 by @ivonet"
+        echo "Version ${VERSION}"
+        exit 0
+        ;;
+    *)
+        die "Unknown OPTION.\n$USAGE"
+        ;;
+esac
 
 # initial save of the original settings.xml
 if [[ ! -f "${HOME}/.menv/.activated" ]]; then
@@ -105,7 +132,7 @@ fi
 
 # you must do something
 if [[ -z "${PROFILE}" ]]; then
-    die "Please provide a profile or other option...$USAGE"
+    die "Please provide an OPTION.\n$USAGE"
 fi
 
 if [[ ! -z "${PROFILE}" ]]; then
@@ -113,7 +140,7 @@ if [[ ! -z "${PROFILE}" ]]; then
         echo "Setting current maven project to ${PROFILE}..."
         echo "${PROFILE}">"${MENV_PROFILE}"
     else
-        echo "[ERROR] The file \"${HOME}/.menv/settings.xml.${PROFILE}\" does not exist."
+        echo "[${red}${bold}ERROR${reset}] The file \"${HOME}/.menv/settings.xml.${PROFILE}\" does not exist."
         echo "Please use one of the following options:"
         list_settings
         echo "Or create a new settings.xml.PROFILE file in ${HOME}/.menv"
