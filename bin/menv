@@ -48,7 +48,7 @@ EOF
 
 die() {
     echo >&2 "[${red}${bold}ERROR${reset}] The job ended in error."
-    echo -e "[${red}${bold}ERROR${reset}] $@"
+    echo -e "[${red}${bold}ERROR${reset}] $*"
     exit 1
 }
 
@@ -80,10 +80,11 @@ find_local_version_file() {
 }
 
 print_active_profile() {
-  find_local_version_file "$PWD"
+  find_local_version_file "$MENV_DIR"
+  [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
 
   if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
-      ACTIVE_PROFILE=$(<"${MENV_PROFILE}")
+      ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
     else
       ACTIVE_PROFILE=default
   fi
