@@ -16,6 +16,7 @@ cat <<EOF
 Usage: menv <command> [<args>]
 
 -a | active                   Show active profile.
+idea                          Override IntelliJ mvn user settings file to profile "settings.xml".
 -h | help                     Help information.
 -v | version                  Show version information.
 -p <arg> | profile <arg>      Sets the "settings.xml.<arg>" as the wanted profile for this folder and underlying folders.
@@ -31,6 +32,19 @@ Naming convention:
 - ~/.menv/<NAME_OF_PROFILE>.maven_opts
   These files will be seen as custom MAVEN_OPTS for the profiles.
   it can contain 1 line with all the MAVEN_OPTS in it
+EOF
+)
+
+WORKSPACE_TEMPLATE=$(
+cat <<EOF
+    <component name="MavenImportPreferences">
+        <option name="generalSettings">
+            <MavenGeneralSettings>
+                <option name="userSettingsFile" value="${HOME}/.menv/settings.xml.TEMPLATE" />
+            </MavenGeneralSettings>
+        </option>
+    </component>
+</project>
 EOF
 )
 
@@ -114,6 +128,50 @@ set_profile() {
   fi
 }
 
+set_profile_for_idea_project() {
+  # Check if menv has a profile set for this directory, return if absent.
+  find_local_version_file "$MENV_DIR"
+  [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
+  if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
+    ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
+  else
+    echo "No menv profile available."
+    return 0
+  fi
+
+  # Check if .idea folder exists, create if absent.
+  if [[ ! -d "${PWD}/.idea" ]]; then
+    mkdir "${PWD}"/.idea
+  fi
+
+  workspace_file="${PWD}/.idea/workspace.xml"
+
+  # Check if workspace.xml file exists, create if absent.
+  if [[ ! -f "${workspace_file}" ]]; then
+    echo "<project>" >> "${PWD}"/.idea/workspace.xml
+    echo "</project>" >> "${PWD}"/.idea/workspace.xml
+  fi
+
+  # Check if profile is already set for project.
+  if [[ $(< "${workspace_file}") == *"settings.xml.${ACTIVE_PROFILE}"* ]]; then
+    echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] already set for this idea project."
+    exit 0;
+  fi
+
+  # Check if any profile is set, inline replace settings.xml if present.
+  if [[ $(< "${workspace_file}") == *"MavenImportPreferences"* ]]; then
+    echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] has been set for this idea project."
+    sed -i -e 's|menv/settings.xml.[A-Za-z]*|menv/settings.xml.'"${ACTIVE_PROFILE}"'|' "${PWD}"/.idea/workspace.xml
+    exit 0;
+  fi
+
+  # No profile is present, add current profile.
+  sed -i '' -e '$ d' "${PWD}/.idea/workspace.xml"
+  echo "${WORKSPACE_TEMPLATE}" >> "${PWD}"/.idea/workspace.xml
+  sed -i -e 's|TEMPLATE|'"${ACTIVE_PROFILE}"'|g' "${PWD}"/.idea/workspace.xml
+  exit 0;
+}
+
 # creating the menv home if not exists
 if [[ ! -d "${HOME}/.menv" ]]; then
   mkdir -p "${HOME}/.menv" 2>/dev/null
@@ -152,6 +210,10 @@ case "$1" in
   version|-v)
     echo "$(basename "$0") (c) 2021 by @ivonet"
     echo "Version ${VERSION}"
+    exit 0
+    ;;
+  idea)
+    set_profile_for_idea_project
     exit 0
     ;;
   *)
