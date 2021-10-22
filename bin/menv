@@ -166,7 +166,7 @@ set_profile_for_idea_project() {
   fi
 
   # No profile is present, add current profile.
-  sed -i '' /^[[:space:]]*$/d' "${PWD}/.idea/workspace.xml" # Remove empty lines at end of file
+  sed -i '' '/^[[:space:]]*$/d' "${PWD}/.idea/workspace.xml" # Remove empty lines at end of file
   sed -i '' -e '$ d' "${PWD}/.idea/workspace.xml" # remove last line </project>
   echo "${WORKSPACE_TEMPLATE}" >> "${PWD}"/.idea/workspace.xml
   sed -i -e 's|TEMPLATE|'"${ACTIVE_PROFILE}"'|g' "${PWD}"/.idea/workspace.xml
