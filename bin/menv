@@ -129,6 +129,13 @@ set_profile() {
 }
 
 set_profile_for_idea_project() {
+
+  # Check if .idea folder exists, create if absent.
+  if [[ ! -d "${PWD}/.idea" ]]; then
+    echo "Not an idea project."
+    exit 0
+  fi
+
   # Check if menv has a profile set for this directory, return if absent.
   find_local_version_file "$MENV_DIR"
   [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
@@ -136,42 +143,72 @@ set_profile_for_idea_project() {
     ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
   else
     echo "No menv profile available."
-    return 0
-  fi
-
-  # Check if .idea folder exists, create if absent.
-  if [[ ! -d "${PWD}/.idea" ]]; then
-    mkdir "${PWD}"/.idea
+    exit 0
   fi
 
   workspace_file="${PWD}/.idea/workspace.xml"
 
   # Check if workspace.xml file exists, create if absent.
   if [[ ! -f "${workspace_file}" ]]; then
-    echo "<project>" >> "${PWD}"/.idea/workspace.xml
-    echo "</project>" >> "${PWD}"/.idea/workspace.xml
+    echo "<project>" >> "${workspace_file}"
+    echo "</project>" >> "${workspace_file}"
   fi
 
   # Check if profile is already set for project.
-  if [[ $(< "${workspace_file}") == *"settings.xml.${ACTIVE_PROFILE}"* ]]; then
+  if [[ $(< "${workspace_file}") == *"settings.xml.${ACTIVE_PROFILE}\""* ]]; then
     echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] already set for this idea project."
-    exit 0;
+    exit 0
   fi
 
   # Check if any profile is set, inline replace settings.xml if present.
   if [[ $(< "${workspace_file}") == *"MavenImportPreferences"* ]]; then
     echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] has been set for this idea project."
-    sed -i -e 's|menv/settings.xml.[A-Za-z]*|menv/settings.xml.'"${ACTIVE_PROFILE}"'|' "${PWD}"/.idea/workspace.xml
-    exit 0;
+    sed -i -e "s|menv/settings.xml.[A-Za-z]*\"|menv/settings.xml.${ACTIVE_PROFILE}\"|" "${workspace_file}"
+    exit 0
   fi
 
   # No profile is present, add current profile.
-  sed -i '' '/^[[:space:]]*$/d' "${PWD}/.idea/workspace.xml" # Remove empty lines at end of file
-  sed -i '' -e '$ d' "${PWD}/.idea/workspace.xml" # remove last line </project>
-  echo "${WORKSPACE_TEMPLATE}" >> "${PWD}"/.idea/workspace.xml
-  sed -i -e 's|TEMPLATE|'"${ACTIVE_PROFILE}"'|g' "${PWD}"/.idea/workspace.xml
+  sed -i '' '/^[[:space:]]*$/d' "${workspace_file}" # Remove empty lines at end of file
+  sed -i '' -e '$ d' "${workspace_file}" # remove last line </project>
+  echo "${WORKSPACE_TEMPLATE}" >> "${workspace_file}"
+  sed -i -e 's|TEMPLATE|'"${ACTIVE_PROFILE}"'|g' "${workspace_file}"
   echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] activated for this idea project."
-  exit 0;
+  exit 0
+}
+
+unset_profile_for_idea_project() {
+
+    # Check if .idea folder exists, create if absent.
+    if [[ ! -d "${PWD}/.idea" ]]; then
+      echo "Not an idea project."
+      exit 0
+    fi
+
+    workspace_file="${PWD}/.idea/workspace.xml"
+
+    if [[ ! -f "${workspace_file}" ]]; then
+      echo "No menv profile was set."
+      exit 0
+    fi
+
+    # Check if menv has a profile set for this directory, return if absent.
+    find_local_version_file "$MENV_DIR"
+    [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
+    if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
+      ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
+    else
+      echo "No menv profile available."
+      exit 0
+    fi
+
+    # Check if the active profile was set
+    if [[ ! $(< "${workspace_file}") == *"menv/settings.xml.${ACTIVE_PROFILE}\""* ]]; then
+      echo "No menv profile was set."
+      exit 0
+    fi
+
+    echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] removed for this idea project."
+    sed -i '' '/<component name="MavenImportPreferences">/,/<\/component>/d' .idea/workspace.xml
 }
 
 # creating the menv home if not exists
@@ -210,12 +247,16 @@ case "$1" in
     set_profile "$2"
     ;;
   version|-v)
-    echo "$(basename "$0") (c) 2021 by @ivonet"
+    echo "$(basename "$0") (c) 2021 by Ivo Woltring"
     echo "Version ${VERSION}"
     exit 0
     ;;
   idea)
     set_profile_for_idea_project
+    exit 0
+    ;;
+  rmidea)
+    unset_profile_for_idea_project
     exit 0
     ;;
   *)
