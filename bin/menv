@@ -170,6 +170,7 @@ set_profile_for_idea_project() {
   sed -i '' -e '$ d' "${PWD}/.idea/workspace.xml" # remove last line </project>
   echo "${WORKSPACE_TEMPLATE}" >> "${PWD}"/.idea/workspace.xml
   sed -i -e 's|TEMPLATE|'"${ACTIVE_PROFILE}"'|g' "${PWD}"/.idea/workspace.xml
+  echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] activated for this idea project."
   exit 0;
 }
 
