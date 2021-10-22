@@ -8,11 +8,12 @@ green="$(tput setaf 2)"
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="2.0.1"
+VERSION="2.1"
 MENV_PROFILE=".menv_profile"
+SYSTEM_DEFAULT_PROFILE_NAME="system default"
 
 USAGE=$(
-cat <<EOF
+  cat <<EOF
 Usage: menv <command> [<args>]
 
 -a | active                   Show active profile.
@@ -36,7 +37,7 @@ EOF
 )
 
 WORKSPACE_TEMPLATE=$(
-cat <<EOF
+  cat <<EOF
     <component name="MavenImportPreferences">
         <option name="generalSettings">
             <MavenGeneralSettings>
@@ -49,30 +50,9 @@ EOF
 )
 
 WORKSPACE_WORKSPACE_TEMPLATE=$(
-cat <<EOF
+  cat <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-</project>
-EOF
-)
-
-WORKSPACE_WORKSPACE_TEMPLATE=$(
-cat <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="CoverageOptionsProvider">
-    <option name="myActivateViewOnRun" value="false" />
-  </component>
-  <component name="ProjectViewState">
-    <option name="autoscrollFromSource" value="true" />
-    <option name="autoscrollToSource" value="true" />
-    <option name="flattenModules" value="true" />
-    <option name="showLibraryContents" value="true" />
-  </component>
-  <component name="PropertiesComponent">
-    <property name="go.import.settings.migrated" value="true" />
-    <property name="settings.editor.selected.configurable" value="coverage" />
-  </component>
 </project>
 EOF
 )
@@ -80,7 +60,7 @@ EOF
 install_menv_mvn() {
   echo "menv is now ready for use."
   rm -f /usr/local/bin/mvn 2>/dev/null
-  menv_mvn="$(find "$(brew --cellar)"/menv -depth 1 -type d|sort|tail -1)/libexec/bin/mvn"
+  menv_mvn="$(find "$(brew --cellar)"/menv -depth 1 -type d | sort | tail -1)/libexec/bin/mvn"
   ln -s "${menv_mvn}" /usr/local/bin/mvn
 }
 
@@ -94,7 +74,7 @@ save_orig_settings_xml() {
   if [[ -f "${HOME}/.m2/settings.xml" ]]; then
     cp "${HOME}/.m2/settings.xml" "${HOME}/.menv/m2_settings.xml"
   fi
-  orig_settings="$(find "$(brew --cellar)"/maven -depth 1 -type d|sort|tail -1)/libexec/conf/settings.xml"
+  orig_settings="$(find "$(brew --cellar)"/maven -depth 1 -type d | sort | tail -1)/libexec/conf/settings.xml"
   if [[ -f "${orig_settings}" ]]; then
     cp "${orig_settings}" "${HOME}/.menv/libexec_settings.xml"
   fi
@@ -102,7 +82,7 @@ save_orig_settings_xml() {
 }
 
 list_settings() {
-  ls ${HOME}/.menv/settings.xml.*|sed "s/^.*settings.xml.//g"
+  ls ${HOME}/.menv/settings.xml.* | sed "s/^.*settings.xml.//g"
 }
 
 find_local_version_file() {
@@ -111,24 +91,27 @@ find_local_version_file() {
     if [ -e "${root}/.menv_profile" ]; then
       CURRENT_PROFILE_FILE="${root}/.menv_profile"
       return
-     fi
+    fi
     root="${root%/*}"
   done
 }
 
-print_active_profile() {
-  find_local_version_file "$MENV_DIR"
-  [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
-
+retrieve_active_profile() {
+  find_local_version_file "${MENV_DIR}"
+  [ "${MENV_DIR}" = "${PWD}" ] || find_local_version_file "${PWD}"
   if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
     ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
   else
-    ACTIVE_PROFILE="system default"
+    ACTIVE_PROFILE="${SYSTEM_DEFAULT_PROFILE_NAME}"
   fi
+}
+
+print_active_profile() {
+  retrieve_active_profile
 
   echo -e "Active profile: [${green}${bold}${ACTIVE_PROFILE}${reset}]"
 
-  if [ "${ACTIVE_PROFILE}" != "system default" ] && [[ -f "${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts" ]]; then
+  if [ "${ACTIVE_PROFILE}" != "${SYSTEM_DEFAULT_PROFILE_NAME}" ] && [[ -f "${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts" ]]; then
     ACTIVE_OPTIONS=$(<"${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts")
     echo -e "Profile specific MAVEN_OPTS: [${green}${bold}$ACTIVE_OPTIONS${reset}]"
   elif [[ -n $MAVEN_OPTS ]]; then
@@ -146,7 +129,7 @@ set_profile() {
 
   if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
     echo -e "Setting current maven project to [${green}${bold}${PROFILE}${reset}]"
-    echo "${PROFILE}">"${MENV_PROFILE}"
+    echo "${PROFILE}" >"${MENV_PROFILE}"
     exit 0
   else
     echo "[${red}${bold}ERROR${reset}] Profile [${green}${bold}${PROFILE}${reset}] does not exist."
@@ -159,87 +142,101 @@ set_profile() {
 
 set_profile_for_idea_project() {
 
-  # Check if menv has a profile set for this directory, return if absent.
-  find_local_version_file "$MENV_DIR"
-  [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
-  if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
-    ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
-  else
-    echo "No menv profile available."
-    exit 0
+  if [[ ! -f "pom.xml" ]]; then
+    echo "Not a maven project or maven project root."
+    exit 1
   fi
 
-    # Check if .idea folder exists, create if absent.
-    if [[ ! -d "${PWD}/.idea" ]]; then
-      if [[ ! -f "pom.xml" ]]; then
-        echo "Not a maven or idea project."
-        exit 0
-      fi
-      mkdir -p "${PWD}/.idea" 2>/dev/null
-    fi
+  # Check if menv has a profile set for this directory, return if absent.
+  retrieve_active_profile
+  if [ "${ACTIVE_PROFILE}" == "${SYSTEM_DEFAULT_PROFILE_NAME}" ]; then
+    echo "No menv profile available."
+    exit 1
+  fi
 
-  workspace_file="${PWD}/.idea/workspace.xml"
+  # Check if .idea folder exists, create if absent.
+  if [[ ! -d "${PWD}/.idea" ]]; then
+    echo "Not an idea project."
+    exit 1
+  fi
+
+  idea_workspace_file="${PWD}/.idea/workspace.xml"
 
   # Check if workspace.xml file exists, create if absent.
-  if [[ ! -f "${workspace_file}" ]]; then
-    echo "${WORKSPACE_WORKSPACE_TEMPLATE}" > "${workspace_file}"
+  if [[ ! -f "${idea_workspace_file}" ]]; then
+    echo "${WORKSPACE_WORKSPACE_TEMPLATE}" >"${idea_workspace_file}"
   fi
 
   # Check if profile is already set for project.
-  if [[ $(< "${workspace_file}") == *"settings.xml.${ACTIVE_PROFILE}\""* ]]; then
+  if [[ $(<"${idea_workspace_file}") == *"settings.xml.${ACTIVE_PROFILE}\""* ]]; then
     echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] already set for this idea project."
     exit 0
   fi
 
   # Check if any profile is set, inline replace settings.xml if present.
-  if [[ $(< "${workspace_file}") == *"MavenImportPreferences"* ]]; then
-    echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] has been set for this idea project."
-    sed -i -e "s|menv/settings.xml.[A-Za-z]*\"|menv/settings.xml.${ACTIVE_PROFILE}\"|" "${workspace_file}"
+  if [[ $(<"${idea_workspace_file}") == *"MavenImportPreferences"* ]]; then
+    if [[ $(<"${idea_workspace_file}") == *"menv/settings.xml."* ]]; then
+      sed -i -e "s|menv/settings.xml.[A-Za-z_-]*\"|menv/settings.xml.${ACTIVE_PROFILE}\"|" "${idea_workspace_file}"
+      echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] has been adjusted for this idea project."
+      exit 0
+    fi
+    echo "The IntelliJ workspace already has some custom settings."
+    echo "Please override the maven 'User setting file:' property manually"
+    echo "in IntelliJ to the following value:"
+    echo
+    echo "    ${HOME}/.menv/settings.xml.${ACTIVE_PROFILE}"
+    echo
+    echo -n "${HOME}/.menv/settings.xml.${ACTIVE_PROFILE}" | pbcopy
+    echo "The value has already been copied to your clipboard."
     exit 0
   fi
 
   # No profile is present, add current profile.
-  sed -i '' '/^[[:space:]]*$/d' "${workspace_file}" # Remove empty lines at end of file
-  sed -i '' -e '$ d' "${workspace_file}" # remove last line </project>
-  echo "${WORKSPACE_TEMPLATE}" >> "${workspace_file}"
-  sed -i -e 's|TEMPLATE|'"${ACTIVE_PROFILE}"'|g' "${workspace_file}"
+  sed -i '' '/^[[:space:]]*$/d' "${idea_workspace_file}" # Remove empty lines at end of file
+  sed -i '' -e '$ d' "${idea_workspace_file}"            # remove last line </project>
+  echo "${WORKSPACE_TEMPLATE}" >>"${idea_workspace_file}"
+  sed -i -e 's|TEMPLATE|'"${ACTIVE_PROFILE}"'|g' "${idea_workspace_file}"
   echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] activated for this idea project."
   exit 0
 }
 
 unset_profile_for_idea_project() {
 
-    # Check if .idea folder exists, create if absent.
-    if [[ ! -d "${PWD}/.idea" ]]; then
-      echo "Not an idea project."
-      exit 0
-    fi
+  if [[ ! -d "${PWD}/.idea" ]]; then
+    echo "Not an idea project."
+    exit 0
+  fi
 
-    workspace_file="${PWD}/.idea/workspace.xml"
+  idea_workspace_file="${PWD}/.idea/workspace.xml"
 
-    if [[ ! -f "${workspace_file}" ]]; then
-      echo "No menv profile was set."
-      exit 0
-    fi
+  if [[ ! -f "${idea_workspace_file}" ]]; then
+    echo "No menv profile was set."
+    exit 0
+  fi
 
-    # Check if menv has a profile set for this directory, return if absent.
-    find_local_version_file "$MENV_DIR"
-    [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
-    if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
-      ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
-    else
-      echo "No menv profile available."
-      exit 0
-    fi
+  retrieve_active_profile
+  if [ "${ACTIVE_PROFILE}" == "${SYSTEM_DEFAULT_PROFILE_NAME}" ]; then
+    echo "No menv profile available."
+    exit 1
+  fi
 
-    # Check if the active profile was set
-    if [[ ! $(< "${workspace_file}") == *"menv/settings.xml.${ACTIVE_PROFILE}\""* ]]; then
-      echo "No menv profile was set."
-      exit 0
-    fi
+  # Check if the active profile was set
+  if [[ ! $(<"${idea_workspace_file}") == *"menv/settings.xml.${ACTIVE_PROFILE}\""* ]]; then
+    echo "No active menv profile was set in IntelliJ."
+    exit 0
+  fi
 
-    echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] removed for this idea project."
-    sed -i '' '/<component name="MavenImportPreferences">/,/<\/component>/d' .idea/workspace.xml
+  # Other IntelliJ options
+  if [[ $(<"${idea_workspace_file}") == *"alwaysUpdateSnapshots"* ]] || [[ $(<"${idea_workspace_file}") == *"localRepository"* ]] || [[ $(<"${idea_workspace_file}") == *"printErrorStackTraces"* ]] || [[ $(<"${idea_workspace_file}") == *"usePluginRegistry"* ]] || [[ $(<"${idea_workspace_file}") == *"workOffline"* ]]; then
+    # Only remove the userSettingsFile option then
+    sed -i -e 's|<option name="userSettingsFile".*>||g' .idea/workspace.xml
+    echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] option removed for this idea project."
+    exit 0
+  fi
+
+  echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] removed for this idea project."
+  #  sed -i '' '/<component name="MavenImportPreferences">/,/<\/component>/d' .idea/workspace.xml
+  sed -i '' '/<option name="generalSettings">/,/<\/option>/d' .idea/workspace.xml
 }
 
 # creating the menv home if not exists
@@ -254,43 +251,43 @@ if [[ ! -f "${HOME}/.menv/.activated" ]]; then
 fi
 
 case "$1" in
-  active|-a)
-    print_active_profile
-    exit 0
-    ;;
-  delete|-d)
-    rm -f "${MENV_PROFILE}" 2>/dev/null
-    exit 0
-    ;;
-  help|-h)
-    echo "$USAGE"
-    exit 0
-    ;;
-  install|-i)
-    install_menv_mvn
-    exit 0
-    ;;
-  list|-l)
-    list_settings
-    exit 0
-    ;;
-  profile|-p)
-    set_profile "$2"
-    ;;
-  version|-v)
-    echo "$(basename "$0") (c) 2021 by Ivo Woltring"
-    echo "Version ${VERSION}"
-    exit 0
-    ;;
-  idea)
-    set_profile_for_idea_project
-    exit 0
-    ;;
-  rmidea)
-    unset_profile_for_idea_project
-    exit 0
-    ;;
-  *)
-    die "Unknown OPTION.\n$USAGE"
-    ;;
+active | -a)
+  print_active_profile
+  exit 0
+  ;;
+delete | -d)
+  rm -f "${MENV_PROFILE}" 2>/dev/null
+  exit 0
+  ;;
+help | -h)
+  echo "$USAGE"
+  exit 0
+  ;;
+install | -i)
+  install_menv_mvn
+  exit 0
+  ;;
+list | -l)
+  list_settings
+  exit 0
+  ;;
+profile | -p)
+  set_profile "$2"
+  ;;
+version | -v)
+  echo "$(basename "$0") (c) 2021 by Ivo Woltring"
+  echo "Version ${VERSION}"
+  exit 0
+  ;;
+idea)
+  set_profile_for_idea_project
+  exit 0
+  ;;
+rmidea)
+  unset_profile_for_idea_project
+  exit 0
+  ;;
+*)
+  die "Unknown OPTION.\n$USAGE"
+  ;;
 esac
