@@ -11,18 +11,6 @@ set -e
 VERSION="1.1"
 MENV_PROFILE=".menv_profile"
 
-install_menv_mvn() {
-    rm -f /usr/local/bin/mvn 2>/dev/null
-    menv_mvn="$(find $(brew --cellar)/menv -depth 1 -type d|sort|tail -1)/libexec/bin/mvn"
-    ln -s "${menv_mvn}" /usr/local/bin/mvn
-}
-install_menv_mvn
-
-# creating the menv home if not exists
-if [[ ! -d "${HOME}/.menv" ]]; then
-    mkdir -p "${HOME}/.menv" 2>/dev/null
-fi
-
 USAGE=$(
 cat <<EOF
 Usage: menv <command> [<args>]
@@ -46,26 +34,31 @@ Naming convention:
 EOF
 )
 
+install_menv_mvn() {
+  rm -f /usr/local/bin/mvn 2>/dev/null
+  menv_mvn="$(find "$(brew --cellar)"/menv -depth 1 -type d|sort|tail -1)/libexec/bin/mvn"
+  ln -s "${menv_mvn}" /usr/local/bin/mvn
+}
+
 die() {
-    echo >&2 "[${red}${bold}ERROR${reset}] The job ended in error."
-    echo -e "[${red}${bold}ERROR${reset}] $@"
-    exit 1
+  echo >&2 "[${red}${bold}ERROR${reset}] The job ended in error."
+  echo -e "[${red}${bold}ERROR${reset}] $*"
+  exit 1
 }
 
 save_orig_settings_xml() {
-    if [[ -f "${HOME}/.m2/settings.xml" ]]; then
-        cp "${HOME}/.m2/settings.xml" "${HOME}/.menv/settings.xml.default"
-    fi
-    orig_settings="$(find $(brew --cellar)/maven -depth 1 -type d|sort|tail -1)/libexec/conf/settings.xml"
-    if [[ -f "${orig_settings}" ]]; then
-        cp "${orig_settings}" "${HOME}/.menv/settings.xml.original"
-    fi
-    touch "${HOME}/.menv/.activated"
+  if [[ -f "${HOME}/.m2/settings.xml" ]]; then
+    cp "${HOME}/.m2/settings.xml" "${HOME}/.menv/m2_settings.xml"
+  fi
+  orig_settings="$(find "$(brew --cellar)"/maven -depth 1 -type d|sort|tail -1)/libexec/conf/settings.xml"
+  if [[ -f "${orig_settings}" ]]; then
+    cp "${orig_settings}" "${HOME}/.menv/libexec_settings.xml"
+  fi
+  touch "${HOME}/.menv/.activated"
 }
 
-
 list_settings() {
-    ls ${HOME}/.menv/settings.xml.*|sed "s/^.*settings.xml.//g"
+  ls ${HOME}/.menv/settings.xml.*|sed "s/^.*settings.xml.//g"
 }
 
 find_local_version_file() {
@@ -80,70 +73,89 @@ find_local_version_file() {
 }
 
 print_active_profile() {
-  find_local_version_file "$PWD"
+  find_local_version_file "$MENV_DIR"
+  [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
 
   if [[ -f "${CURRENT_PROFILE_FILE}" ]]; then
-      ACTIVE_PROFILE=$(<"${MENV_PROFILE}")
-    else
-      ACTIVE_PROFILE=default
+    ACTIVE_PROFILE=$(<"${CURRENT_PROFILE_FILE}")
+  else
+    ACTIVE_PROFILE="system default"
   fi
 
-  echo "Active profile: [${green}${bold}${ACTIVE_PROFILE}${reset}]"
+  echo -e "Active profile: [${green}${bold}${ACTIVE_PROFILE}${reset}]"
+
+  if [ "${ACTIVE_PROFILE}" != "system default" ] && [[ -f "${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts" ]]; then
+    ACTIVE_OPTIONS=$(<"${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts")
+    echo -e "Profile specific MAVEN_OPTS: [${green}${bold}$ACTIVE_OPTIONS${reset}]"
+  elif [[ -n $MAVEN_OPTS ]]; then
+    echo -e "System specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
+  fi
+
 }
 
-case "$1" in
-    active|-a)
-        print_active_profile
-        exit 0
-        ;;
-    delete|-d)
-        rm -f "${MENV_PROFILE}" 2>/dev/null
-        exit 0
-        ;;
-    help|-h)
-        echo "$USAGE"
-        exit 0
-        ;;
-    install|-i)
-        install_menv_mvn
-        exit 0
-        ;;
-    list|-l)
-        list_settings
-        exit 0
-        ;;
-    profile|-p)
-        PROFILE=$2
-        ;;
-    version|-v)
-        echo "$(basename "$0") (c) 2021 by @ivonet"
-        echo "Version ${VERSION}"
-        exit 0
-        ;;
-    *)
-        die "Unknown OPTION.\n$USAGE"
-        ;;
-esac
+set_profile() {
+  if [[ -z "${1}" ]]; then
+    die "Please provide an OPTION.\n$USAGE"
+  fi
+
+  PROFILE=${1}
+
+  if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
+    echo -e "Setting current maven project to [${green}${bold}${PROFILE}${reset}]"
+    echo "${PROFILE}">"${MENV_PROFILE}"
+    exit 0
+  else
+    echo "[${red}${bold}ERROR${reset}] Profile [${green}${bold}${PROFILE}${reset}] does not exist."
+    echo "Please use one of the following options:"
+    list_settings
+    echo "Or create a new settings.xml.PROFILE file in ${HOME}/.menv"
+    exit 1
+  fi
+}
+#
+#install_menv_mvn
+
+# creating the menv home if not exists
+if [[ ! -d "${HOME}/.menv" ]]; then
+  mkdir -p "${HOME}/.menv" 2>/dev/null
+  install_menv_mvn
+fi
 
 # initial save of the original settings.xml
 if [[ ! -f "${HOME}/.menv/.activated" ]]; then
-    save_orig_settings_xml
+  save_orig_settings_xml
 fi
 
-# you must do something
-if [[ -z "${PROFILE}" ]]; then
-    die "Please provide an OPTION.\n$USAGE"
-fi
-
-if [[ ! -z "${PROFILE}" ]]; then
-    if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
-        echo "Setting current maven project to ${PROFILE}..."
-        echo "${PROFILE}">"${MENV_PROFILE}"
-    else
-        echo "[${red}${bold}ERROR${reset}] The file \"${HOME}/.menv/settings.xml.${PROFILE}\" does not exist."
-        echo "Please use one of the following options:"
-        list_settings
-        echo "Or create a new settings.xml.PROFILE file in ${HOME}/.menv"
-        exit 1
-    fi
-fi
+case "$1" in
+  active|-a)
+    print_active_profile
+    exit 0
+    ;;
+  delete|-d)
+    rm -f "${MENV_PROFILE}" 2>/dev/null
+    exit 0
+    ;;
+  help|-h)
+    echo "$USAGE"
+    exit 0
+    ;;
+  install|-i)
+    install_menv_mvn
+    exit 0
+    ;;
+  list|-l)
+    list_settings
+    exit 0
+    ;;
+  profile|-p)
+    set_profile "$2"
+    ;;
+  version|-v)
+    echo "$(basename "$0") (c) 2021 by @ivonet"
+    echo "Version ${VERSION}"
+    exit 0
+    ;;
+  *)
+    die "Unknown OPTION.\n$USAGE"
+    ;;
+esac
