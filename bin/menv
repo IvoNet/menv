@@ -118,6 +118,7 @@ set_profile() {
 # creating the menv home if not exists
 if [[ ! -d "${HOME}/.menv" ]]; then
   mkdir -p "${HOME}/.menv" 2>/dev/null
+  install_menv_mvn
 fi
 
 # initial save of the original settings.xml
