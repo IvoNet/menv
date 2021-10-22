@@ -8,7 +8,7 @@ green="$(tput setaf 2)"
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="2.0"
+VERSION="2.0.1"
 MENV_PROFILE=".menv_profile"
 
 USAGE=$(
@@ -16,7 +16,7 @@ cat <<EOF
 Usage: menv <command> [<args>]
 
 -a | active                   Show active profile.
-idea                          Override IntelliJ mvn user settings file to profile "settings.xml".
+idea                          Override IntelliJ maven user settings file to profile "settings.xml".
 -h | help                     Help information.
 -v | version                  Show version information.
 -p <arg> | profile <arg>      Sets the "settings.xml.<arg>" as the wanted profile for this folder and underlying folders.
@@ -44,6 +44,35 @@ cat <<EOF
             </MavenGeneralSettings>
         </option>
     </component>
+</project>
+EOF
+)
+
+WORKSPACE_WORKSPACE_TEMPLATE=$(
+cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+</project>
+EOF
+)
+
+WORKSPACE_WORKSPACE_TEMPLATE=$(
+cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CoverageOptionsProvider">
+    <option name="myActivateViewOnRun" value="false" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="autoscrollFromSource" value="true" />
+    <option name="autoscrollToSource" value="true" />
+    <option name="flattenModules" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="settings.editor.selected.configurable" value="coverage" />
+  </component>
 </project>
 EOF
 )
@@ -130,12 +159,6 @@ set_profile() {
 
 set_profile_for_idea_project() {
 
-  # Check if .idea folder exists, create if absent.
-  if [[ ! -d "${PWD}/.idea" ]]; then
-    echo "Not an idea project."
-    exit 0
-  fi
-
   # Check if menv has a profile set for this directory, return if absent.
   find_local_version_file "$MENV_DIR"
   [ "$MENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
@@ -146,12 +169,20 @@ set_profile_for_idea_project() {
     exit 0
   fi
 
+    # Check if .idea folder exists, create if absent.
+    if [[ ! -d "${PWD}/.idea" ]]; then
+      if [[ ! -f "pom.xml" ]]; then
+        echo "Not a maven or idea project."
+        exit 0
+      fi
+      mkdir -p "${PWD}/.idea" 2>/dev/null
+    fi
+
   workspace_file="${PWD}/.idea/workspace.xml"
 
   # Check if workspace.xml file exists, create if absent.
   if [[ ! -f "${workspace_file}" ]]; then
-    echo "<project>" >> "${workspace_file}"
-    echo "</project>" >> "${workspace_file}"
+    echo "${WORKSPACE_WORKSPACE_TEMPLATE}" > "${workspace_file}"
   fi
 
   # Check if profile is already set for project.
