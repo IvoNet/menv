@@ -8,7 +8,7 @@ green="$(tput setaf 2)"
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="1.1"
+VERSION="1.3"
 MENV_PROFILE=".menv_profile"
 
 USAGE=$(
@@ -112,13 +112,11 @@ set_profile() {
     exit 1
   fi
 }
-#
-#install_menv_mvn
+install_menv_mvn
 
 # creating the menv home if not exists
 if [[ ! -d "${HOME}/.menv" ]]; then
   mkdir -p "${HOME}/.menv" 2>/dev/null
-  install_menv_mvn
 fi
 
 # initial save of the original settings.xml
