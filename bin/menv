@@ -8,7 +8,7 @@ green="$(tput setaf 2)"
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="1.3"
+VERSION="1.4"
 MENV_PROFILE=".menv_profile"
 
 USAGE=$(
@@ -35,6 +35,7 @@ EOF
 )
 
 install_menv_mvn() {
+  echo "menv is now ready for use."
   rm -f /usr/local/bin/mvn 2>/dev/null
   menv_mvn="$(find "$(brew --cellar)"/menv -depth 1 -type d|sort|tail -1)/libexec/bin/mvn"
   ln -s "${menv_mvn}" /usr/local/bin/mvn
@@ -112,11 +113,11 @@ set_profile() {
     exit 1
   fi
 }
-install_menv_mvn
 
 # creating the menv home if not exists
 if [[ ! -d "${HOME}/.menv" ]]; then
   mkdir -p "${HOME}/.menv" 2>/dev/null
+  install_menv_mvn
 fi
 
 # initial save of the original settings.xml
