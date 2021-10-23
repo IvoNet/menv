@@ -47,7 +47,7 @@ fi
 if [ "$PROFILE" == "$system_default_profile" ]; then
   echo -e "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}${PROFILE}${reset}]"
   print_mvn_opts_if_default_available
-  "${MVN}" "$@"
+  exec "${MVN}" "$@"
 fi
 
 if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
