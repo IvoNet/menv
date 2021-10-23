@@ -8,7 +8,7 @@ green="$(tput setaf 2)"
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="2.1"
+VERSION="2.2"
 MENV_PROFILE=".menv_profile"
 SYSTEM_DEFAULT_PROFILE_NAME="system default"
 

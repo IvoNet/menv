@@ -45,3 +45,8 @@ brew -h
 
 - [TheCheerfulDev](https://github.com/TheCheerfulDev/) for the nice 
   improvements.
+
+
+# Todo
+
+- look at the returncodes. they seem to be inconsistent.
