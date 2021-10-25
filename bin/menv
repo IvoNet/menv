@@ -14,20 +14,23 @@ SYSTEM_DEFAULT_PROFILE_NAME="system default"
 
 USAGE=$(
   cat <<EOF
-Usage: menv <command> [<args>]
+Usage: ${green}menv${reset} <command> [<args>]
 
-active             Show active profile.
-delete             Deletes the set menv profile for this directory (if exists).
-edit [profile]     Edit the active profile or the provided profile.
-editopts [profile] Edit the active maven_opt or for the provided profile.
-help               Help information.
-idea               Override IntelliJ maven user settings file to profile "settings.xml".
-install            Initialize menv for mvn.
-list               Lists all possible profiles you can choose from.
-profile [profile]  set ${green}profile${reset} to active profile for this
-                   folder and underlying folders. if no profile provided you get a list of available
-                   profiles to choose from.
-version            Show version information.
+${green}active${reset}             Show active profile.
+${green}delete${reset}             Deletes the set menv profile for this directory (if exists).
+${green}edit${reset} [profile]     Edit the active profile or the provided ${green}profile${reset}.
+${green}editopts${reset} [profile] Edit the active maven_opt or for the provided ${green}profile${reset}.
+                   If the maven_opts does not yet exist it will be created for you.
+${green}help${reset}               This help.
+${green}idea${reset}               Override IntelliJ maven settings.xml to the ${green}profile${reset} one.
+${green}init${reset}               Initialize menv for mvn.
+${green}list${reset}               Lists all possible profiles you can choose from.
+${green}new${reset} <profile>      Create a new ${green}profile${reset}.
+${green}profile${reset} [profile]  set ${green}profile${reset} to active ${green}profile${reset} for this
+                   folder and underlying folders. if no ${green}profile${reset} provided you get a list of
+                   available profiles to choose from.
+${green}rmidea${reset}             Try to remove the IntelliJ overridden settings.
+${green}version${reset}            Show version information.
 
 Naming convention:
 
@@ -78,16 +81,20 @@ brew_relink_menv() {
 }
 
 die() {
-  echo >&2 "[${red}${bold}ERROR${reset}] The job ended in error."
+  echo >&2 "[${red}${bold}ERROR${reset}] The menv command ended in error."
   echo -e "[${red}${bold}ERROR${reset}] $*"
   exit 1
+}
+
+set_orig_settings_xml() {
+  orig_settings="$(find "$(brew --cellar)"/maven -depth 1 -type d | sort | tail -1)/libexec/conf/settings.xml"
 }
 
 save_orig_settings_xml() {
   if [[ -f "${HOME}/.m2/settings.xml" ]]; then
     cp "${HOME}/.m2/settings.xml" "${HOME}/.menv/m2_settings.xml"
   fi
-  orig_settings="$(find "$(brew --cellar)"/maven -depth 1 -type d | sort | tail -1)/libexec/conf/settings.xml"
+  set_orig_settings_xml
   if [[ -f "${orig_settings}" ]]; then
     cp "${orig_settings}" "${HOME}/.menv/libexec_settings.xml"
   fi
@@ -95,7 +102,7 @@ save_orig_settings_xml() {
 }
 
 list_settings() {
-  find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g"
+  find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml./- /g"
 }
 
 find_local_version_file() {
@@ -135,8 +142,12 @@ print_active_profile() {
 
 get_profiles() {
   found=$(find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
-  count=$(wc -l <<<"${found}")
-  if [[ ${count} -gt 1 ]]; then
+  if [[ -z "$found" ]]; then
+    count=0
+  else
+    count=$(wc -l <<<"${found}")
+  fi
+  if [[ ${count} -gt 0 ]]; then
     profiles=()
     while read -r line; do
       profiles+=("${line}")
@@ -147,29 +158,28 @@ get_profiles() {
 set_profile() {
   if [[ -z "${1}" ]]; then
     get_profiles
-    if [[ ${count} -gt 1 ]]; then
+    if [[ ${count} -gt 0 ]]; then
       select chosen in "${profiles[@]}"; do
         case $REPLY in
-          q | 0)
-            echo "Quitting...."
+        q | 0)
+          echo "Quitting...."
+          return 0
+          ;;
+        *)
+          if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
+            echo "${chosen}" >"${MENV_PROFILE}"
+            echo "Profile set..."
+            print_active_profile
             return 0
-            ;;
-          *)
-            if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
-              echo "${chosen}" >"${MENV_PROFILE}"
-              echo "Profile set..."
-              print_active_profile
-              return 0
-            else
-              echo "Wrong choice."
-              echo "Please try again..."
-            fi
-            ;;
+          else
+            echo "Wrong choice."
+            echo "Please try again..."
+          fi
+          ;;
         esac
       done
     else
-      echo "No menv profile(s) available."
-      return 1
+      die "No menv profile(s) available to activate (see 'menv help')."
     fi
   fi
 
@@ -181,10 +191,13 @@ set_profile() {
     return 0
   else
     echo "[${red}${bold}ERROR${reset}] Profile [${green}${bold}${PROFILE}${reset}] does not exist."
-    echo "Please use one of the following options:"
-    list_settings
-    echo "Or create a new settings.xml.PROFILE file in ${HOME}/.menv"
-    return 1
+    echo "Please create a new profile with the 'menv new' command first".
+    get_profiles
+    if [[ ${count} -gt 0 ]]; then
+      echo "Or choose one of the existing profiles:"
+      list_settings
+    fi
+    exit 1
   fi
 }
 
@@ -290,7 +303,7 @@ unset_profile_for_idea_project() {
 # creating the menv home if not exists
 if [[ ! -d "${HOME}/.menv" ]]; then
   mkdir -p "${HOME}/.menv" 2>/dev/null
-  install_menv_mvn
+  brew_relink_menv
 fi
 
 check_valid_editor() {
@@ -304,7 +317,7 @@ check_valid_editor() {
 
 choose_edit_profile() {
   get_profiles
-  if [[ ${count} -gt 1 ]]; then
+  if [[ ${count} -gt 0 ]]; then
     select chosen in "${profiles[@]}"; do
       case $REPLY in
       q | 0)
@@ -325,6 +338,8 @@ choose_edit_profile() {
         ;;
       esac
     done
+  else
+    die "There is no profile to edit yet. Please use the 'menv new' command first."
   fi
 }
 
@@ -362,6 +377,50 @@ edit_maven_profile() {
   fi
 }
 
+new_system_profile() {
+  set_orig_settings_xml
+  cp "${orig_settings}" "${HOME}/.menv/settings.xml.$1"
+  echo "Created profile ${green}$1${reset} based on default settings.xml."
+  edit_profile "$1"
+}
+
+new_profile() {
+  if [[ -z "$1" ]]; then
+    die "Please provide a new profile name (see help)."
+    exit 1
+  fi
+  if [[ -f "${HOME}/.menv/settings.xml.$1" ]]; then
+    die "The new profile [${green}$1${reset}] to create already exists."
+  fi
+  get_profiles
+  if [[ ${count} -gt 0 ]]; then
+    echo "On which ${green}profile${reset} do you want to base the new one?"
+    echo "Press q for the system default settings.xml."
+    select chosen in "${profiles[@]}"; do
+      case $REPLY in
+      q | 0)
+        new_system_profile "$1"
+        exit 0
+        ;;
+      *)
+        if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
+          cp "${HOME}/.menv/settings.xml.${chosen}" "${HOME}/.menv/settings.xml.$1"
+          echo "Created profile [${green}$1${reset}] based on profile [${green}${chosen}${reset}]."
+          edit_profile "$1"
+          exit 0
+        else
+          echo "Wrong choice."
+          echo "Please try again..."
+        fi
+        ;;
+      esac
+    done
+  else
+    new_system_profile "$1"
+    exit 0
+  fi
+}
+
 # initial save of the original settings.xml
 if [[ ! -f "${HOME}/.menv/.activated" ]]; then
   save_orig_settings_xml
@@ -388,12 +447,16 @@ help | -h | --help)
   echo "$USAGE"
   exit 0
   ;;
-install)
+init | install)
   brew_relink_menv
   exit 0
   ;;
 list | ls)
   list_settings
+  exit 0
+  ;;
+new)
+  new_profile "$2"
   exit 0
   ;;
 profile | p)
@@ -410,6 +473,11 @@ idea | i)
   ;;
 rmidea)
   unset_profile_for_idea_project
+  exit 0
+  ;;
+safeorig)
+#  hidden feature
+  save_orig_settings_xml
   exit 0
   ;;
 *)

@@ -17,6 +17,7 @@ With this command you can set a folder (structure) to a specific maven profile a
 ```bash
 brew tap ivonet/cli
 brew install menv
+menv init
 ```
 
 # Usage
@@ -44,7 +45,7 @@ brew -h
 # Special thanks
 
 - [TheCheerfulDev](https://github.com/TheCheerfulDev/) for the nice 
-  improvements.
+  improvements and creat new feature requests.
 
 
 # Todo
