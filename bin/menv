@@ -386,7 +386,7 @@ new_system_profile() {
 
 new_profile() {
   if [[ -z "$1" ]]; then
-    die "Please provide a new profile name (see help)."
+    die "Please provide a new ${green}profile${reset} name (see 'menv help')."
     exit 1
   fi
   if [[ -f "${HOME}/.menv/settings.xml.$1" ]]; then
