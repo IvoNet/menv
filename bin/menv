@@ -257,30 +257,30 @@ check_valid_editor() {
 }
 
 choose_edit_profile() {
-      found=$(find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
-      count=$(wc -l <<<"${found}")
-      if [[ ${count} -gt 1 ]]; then
-        lines=()
-        while read -r line; do
-          lines+=("${line}")
-        done <<<"${found}"
-        select chosen in "${lines[@]}"; do
-          case $REPLY in
-            q | 0)
-              echo "Quitting...."
-              return 0
-              ;;
-            *)
-              if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
-                exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml."${chosen}"
-              else
-                echo "Wrong choice."
-                echo "Please try again..."
-              fi
-              ;;
-          esac
-        done
-      fi
+  found=$(find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
+  count=$(wc -l <<<"${found}")
+  if [[ ${count} -gt 1 ]]; then
+    lines=()
+    while read -r line; do
+      lines+=("${line}")
+    done <<<"${found}"
+    select chosen in "${lines[@]}"; do
+      case $REPLY in
+      q | 0)
+        echo "Quitting...."
+        return 0
+        ;;
+      *)
+        if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
+          exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml."${chosen}"
+        else
+          echo "Wrong choice."
+          echo "Please try again..."
+        fi
+        ;;
+      esac
+    done
+  fi
 }
 
 edit_profile() {
