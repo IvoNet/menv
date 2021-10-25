@@ -16,14 +16,16 @@ USAGE=$(
   cat <<EOF
 Usage: menv <command> [<args>]
 
--a | active                   Show active profile.
-idea                          Override IntelliJ maven user settings file to profile "settings.xml".
--h | help                     Help information.
--v | version                  Show version information.
--p <arg> | profile <arg>      Sets the "settings.xml.<arg>" as the wanted profile for this folder and underlying folders.
--d | delete                   Deletes the set menv profile for this directory (if exists).
--l | list                     Lists all possible profiles you can choose from.
--i | install                  Initialize menv for mvn.
+active                   Show active profile.
+delete                   Deletes the set menv profile for this directory (if exists).
+edit [profile]           Edit the active profile or the provided profile.
+editopts [profile]       Edit the active maven_opt or for the provided profile.
+help                     Help information.
+idea                     Override IntelliJ maven user settings file to profile "settings.xml".
+install                  Initialize menv for mvn.
+list                     Lists all possible profiles you can choose from.
+profile <arg>            Sets the "settings.xml.<arg>" as the wanted profile for this folder and underlying folders.
+version                  Show version information.
 
 Naming convention:
 
@@ -82,7 +84,7 @@ save_orig_settings_xml() {
 }
 
 list_settings() {
-  find ${HOME}/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g"
+  find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g"
 }
 
 find_local_version_file() {
@@ -245,36 +247,93 @@ if [[ ! -d "${HOME}/.menv" ]]; then
   install_menv_mvn
 fi
 
+check_valid_editor() {
+  MY_MENV_EDITOR=${MENV_EDITOR:-${EDITOR:-vi}}
+  if [[ ! -f $(which "${MY_MENV_EDITOR}") ]]; then
+    echo "Can not find a viable editor."
+    echo "Please define the env var MENV_EDITOR or EDITOR or install vi."
+    exit 1
+  fi
+}
+
+choose_edit_profile() {
+      found=$(find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
+      count=$(wc -l <<<"${found}")
+      if [[ ${count} -gt 1 ]]; then
+        lines=()
+        while read -r line; do
+          lines+=("${line}")
+        done <<<"${found}"
+        select chosen in "${lines[@]}"; do
+          case $REPLY in
+            q | 0)
+              echo "Quitting...."
+              return 0
+              ;;
+            *)
+              if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
+                exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml."${chosen}"
+              else
+                echo "Wrong choice."
+                echo "Please try again..."
+              fi
+              ;;
+          esac
+        done
+      fi
+}
+
+edit_profile() {
+  check_valid_editor
+  if [[ -z "$1" ]]; then
+    retrieve_active_profile
+    if [[ "${ACTIVE_PROFILE}" == "${SYSTEM_DEFAULT_PROFILE_NAME}" ]]; then
+      choose_edit_profile
+    fi
+    exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml.${ACTIVE_PROFILE}
+  fi
+
+  if [[ -f "${HOME}/.menv/settings.xml.$1" ]]; then
+    exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml."$1"
+  else
+    die "Profile [${green}$1${reset}] not found."
+  fi
+}
+
 # initial save of the original settings.xml
 if [[ ! -f "${HOME}/.menv/.activated" ]]; then
   save_orig_settings_xml
 fi
 
 case "$1" in
-active | -a)
+active)
   print_active_profile
   exit 0
   ;;
-delete | -d)
+delete)
   rm -f "${MENV_PROFILE}" 2>/dev/null
   exit 0
   ;;
-help | -h)
+edit)
+  edit_profile "$2"
+  exit 0
+  ;;
+help)
   echo "$USAGE"
   exit 0
   ;;
-install | -i)
+install)
   install_menv_mvn
   exit 0
   ;;
-list | -l)
+list)
   list_settings
   exit 0
   ;;
-profile | -p)
+profile)
   set_profile "$2"
   ;;
-version | -v)
+version)
   echo "$(basename "$0") (c) 2021 by Ivo Woltring"
   echo "Version ${VERSION}"
   exit 0
