@@ -16,16 +16,17 @@ USAGE=$(
   cat <<EOF
 Usage: menv <command> [<args>]
 
-active                   Show active profile.
-delete                   Deletes the set menv profile for this directory (if exists).
-edit [profile]           Edit the active profile or the provided profile.
-editopts [profile]       Edit the active maven_opt or for the provided profile.
-help                     Help information.
-idea                     Override IntelliJ maven user settings file to profile "settings.xml".
-install                  Initialize menv for mvn.
-list                     Lists all possible profiles you can choose from.
-profile <arg>            Sets the "settings.xml.<arg>" as the wanted profile for this folder and underlying folders.
-version                  Show version information.
+active             Show active profile.
+delete             Deletes the set menv profile for this directory (if exists).
+edit [profile]     Edit the active profile or the provided profile.
+editopts [profile] Edit the active maven_opt or for the provided profile.
+help               Help information.
+idea               Override IntelliJ maven user settings file to profile "settings.xml".
+install            Initialize menv for mvn.
+list               Lists all possible profiles you can choose from.
+profile <arg>      Sets the "settings.xml.<arg>" as the active profile for this
+                   folder and underlying folders.
+version            Show version information.
 
 Naming convention:
 
@@ -35,6 +36,14 @@ Naming convention:
 - ~/.menv/<NAME_OF_PROFILE>.maven_opts
   These files will be seen as custom MAVEN_OPTS for the profiles.
   it can contain 1 line with all the MAVEN_OPTS in it
+
+Environment variables:
+
+You can set the editor of your choise by either setting the MENV_EDITOR setting
+or the EDITOR variable, e.g.:
+  export MENV_EDITOR=nano
+Note that by setting the EDITOR setting you might also affect other tools.
+The editor will ultimately default to vi.
 EOF
 )
 
@@ -272,7 +281,11 @@ choose_edit_profile() {
         ;;
       *)
         if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
-          exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml."${chosen}"
+          if [[ "$1" == "maven" ]]; then
+            exec "${MY_MENV_EDITOR}" "${HOME}/.menv/${chosen}.maven_opts"
+          else
+            exec "${MY_MENV_EDITOR}" "${HOME}/.menv/settings.xml.${chosen}"
+          fi
         else
           echo "Wrong choice."
           echo "Please try again..."
@@ -288,13 +301,30 @@ edit_profile() {
   if [[ -z "$1" ]]; then
     retrieve_active_profile
     if [[ "${ACTIVE_PROFILE}" == "${SYSTEM_DEFAULT_PROFILE_NAME}" ]]; then
-      choose_edit_profile
+      choose_edit_profile "settings"
     fi
-    exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml.${ACTIVE_PROFILE}
+    exec "${MY_MENV_EDITOR}" "${HOME}/.menv/settings.xml.${ACTIVE_PROFILE}"
   fi
 
   if [[ -f "${HOME}/.menv/settings.xml.$1" ]]; then
-    exec "${MY_MENV_EDITOR}" ~/.menv/settings.xml."$1"
+    exec "${MY_MENV_EDITOR}" "${HOME}/.menv/settings.xml.$1"
+  else
+    die "Profile [${green}$1${reset}] not found."
+  fi
+}
+
+edit_maven_profile() {
+  check_valid_editor
+  if [[ -z "$1" ]]; then
+    retrieve_active_profile
+    if [[ "${ACTIVE_PROFILE}" == "${SYSTEM_DEFAULT_PROFILE_NAME}" ]]; then
+      choose_edit_profile "maven"
+    fi
+    exec "${MY_MENV_EDITOR}" ~/.menv/"${ACTIVE_PROFILE}".maven_opts
+  fi
+
+  if [[ -f "${HOME}/.menv/settings.xml.$1" ]]; then
+    exec "${MY_MENV_EDITOR}" "${HOME}/.menv/${1}.maven_opts"
   else
     die "Profile [${green}$1${reset}] not found."
   fi
@@ -316,6 +346,10 @@ delete)
   ;;
 edit)
   edit_profile "$2"
+  exit 0
+  ;;
+editopts)
+  edit_maven_profile "$2"
   exit 0
   ;;
 help)
