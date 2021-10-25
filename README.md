@@ -23,7 +23,7 @@ menv init
 # Usage
 
 ```bash
-brew -h
+brew help
 ```
 
 # License
