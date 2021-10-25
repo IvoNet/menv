@@ -21,33 +21,36 @@ ${green}delete${reset}             Deletes the set menv profile for this directo
 ${green}edit${reset} [profile]     Edit the active profile or the provided ${green}profile${reset}.
 ${green}editopts${reset} [profile] Edit the active maven_opt or for the provided ${green}profile${reset}.
                    If the maven_opts does not yet exist it will be created for you.
+                   See naming convention below for more information.
 ${green}help${reset}               This help.
 ${green}idea${reset}               Override IntelliJ maven settings.xml to the ${green}profile${reset} one.
 ${green}init${reset}               Initialize menv for mvn.
 ${green}list${reset}               Lists all possible profiles you can choose from.
-${green}new${reset} <profile>      Create a new ${green}profile${reset}.
+${green}new${reset} <profile>      Create a new ${green}profile${reset}. See naming convention below for
+                   more information.
 ${green}profile${reset} [profile]  set ${green}profile${reset} to active ${green}profile${reset} for this
                    folder and underlying folders. if no ${green}profile${reset} provided you get a list of
                    available profiles to choose from.
 ${green}rmidea${reset}             Try to remove the IntelliJ overridden settings.
 ${green}version${reset}            Show version information.
 
-Naming convention:
-
-- ~/.menv/settings.xml.<NAME_OF_PROFILE>
-  These files will be seen as possible profiles you can set
-  They should be your custom settings.xml files
-- ~/.menv/<NAME_OF_PROFILE>.maven_opts
-  These files will be seen as custom MAVEN_OPTS for the profiles.
-  it can contain 1 line with all the MAVEN_OPTS in it
-
 Environment variables:
 
-You can set the editor of your choise by either setting the MENV_EDITOR setting
-or the EDITOR variable, e.g.:
-  export MENV_EDITOR=nano
-Note that by setting the EDITOR setting you might also affect other tools.
-The editor will ultimately default to vi.
+  You can set the editor of your choise by either setting the MENV_EDITOR setting
+  or the EDITOR variable, e.g.:
+    export MENV_EDITOR=nano
+  Note that by setting the EDITOR setting you might also affect other tools.
+  The editor will ultimately default to vi.
+
+Naming convention:
+
+  - ~/.menv/settings.xml.<NAME_OF_PROFILE>
+    These files will be seen as possible profiles you can set
+    They should be your custom settings.xml files
+  - ~/.menv/<NAME_OF_PROFILE>.maven_opts
+    These files will be seen as custom MAVEN_OPTS for the profiles.
+    It can contain 1 line with all the MAVEN_OPTS in it.
+    If this file exists it will overrule the system MAVEN_OPTS if it exists.
 EOF
 )
 
