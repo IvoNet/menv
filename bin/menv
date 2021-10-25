@@ -309,7 +309,7 @@ choose_edit_profile() {
       case $REPLY in
       q | 0)
         echo "Quitting...."
-        return 0
+        exit 0
         ;;
       *)
         if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
