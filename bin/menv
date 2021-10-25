@@ -8,7 +8,7 @@ green="$(tput setaf 2)"
 set -e
 [[ -n "$MENV_DEBUG" ]] && set -x
 
-VERSION="2.2"
+VERSION="!!!BREWVERSION!!!"
 MENV_PROFILE=".menv_profile"
 SYSTEM_DEFAULT_PROFILE_NAME="system default"
 
@@ -24,8 +24,9 @@ help               Help information.
 idea               Override IntelliJ maven user settings file to profile "settings.xml".
 install            Initialize menv for mvn.
 list               Lists all possible profiles you can choose from.
-profile <arg>      Sets the "settings.xml.<arg>" as the active profile for this
-                   folder and underlying folders.
+profile [profile]  set ${green}profile${reset} to active profile for this
+                   folder and underlying folders. if no profile provided you get a list of available
+                   profiles to choose from.
 version            Show version information.
 
 Naming convention:
@@ -131,9 +132,44 @@ print_active_profile() {
 
 }
 
+get_profiles() {
+  found=$(find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
+  count=$(wc -l <<<"${found}")
+  if [[ ${count} -gt 1 ]]; then
+    profiles=()
+    while read -r line; do
+      profiles+=("${line}")
+    done <<<"${found}"
+  fi
+}
+
 set_profile() {
   if [[ -z "${1}" ]]; then
-    die "Please provide an OPTION.\n$USAGE"
+    get_profiles
+    if [[ ${count} -gt 1 ]]; then
+      select chosen in "${profiles[@]}"; do
+        case $REPLY in
+          q | 0)
+            echo "Quitting...."
+            return 0
+            ;;
+          *)
+            if [[ 1 -le "$REPLY" ]] && [[ $REPLY -le ${count} ]]; then
+              echo "${chosen}" >"${MENV_PROFILE}"
+              echo "Profile set..."
+              print_active_profile
+              return 0
+            else
+              echo "Wrong choice."
+              echo "Please try again..."
+            fi
+            ;;
+        esac
+      done
+    else
+      echo "No menv profile(s) available."
+      return 1
+    fi
   fi
 
   PROFILE=${1}
@@ -141,13 +177,13 @@ set_profile() {
   if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
     echo -e "Setting current maven project to [${green}${bold}${PROFILE}${reset}]"
     echo "${PROFILE}" >"${MENV_PROFILE}"
-    exit 0
+    return 0
   else
     echo "[${red}${bold}ERROR${reset}] Profile [${green}${bold}${PROFILE}${reset}] does not exist."
     echo "Please use one of the following options:"
     list_settings
     echo "Or create a new settings.xml.PROFILE file in ${HOME}/.menv"
-    exit 1
+    return 1
   fi
 }
 
@@ -266,14 +302,9 @@ check_valid_editor() {
 }
 
 choose_edit_profile() {
-  found=$(find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
-  count=$(wc -l <<<"${found}")
+  get_profiles
   if [[ ${count} -gt 1 ]]; then
-    lines=()
-    while read -r line; do
-      lines+=("${line}")
-    done <<<"${found}"
-    select chosen in "${lines[@]}"; do
+    select chosen in "${profiles[@]}"; do
       case $REPLY in
       q | 0)
         echo "Quitting...."
@@ -336,23 +367,23 @@ if [[ ! -f "${HOME}/.menv/.activated" ]]; then
 fi
 
 case "$1" in
-active)
+active | a | -a)
   print_active_profile
   exit 0
   ;;
-delete)
+delete | rm | remove)
   rm -f "${MENV_PROFILE}" 2>/dev/null
   exit 0
   ;;
-edit)
+edit | e)
   edit_profile "$2"
   exit 0
   ;;
-editopts)
+editopts | eo)
   edit_maven_profile "$2"
   exit 0
   ;;
-help)
+help | -h | --help)
   echo "$USAGE"
   exit 0
   ;;
@@ -360,19 +391,19 @@ install)
   install_menv_mvn
   exit 0
   ;;
-list)
+list | ls)
   list_settings
   exit 0
   ;;
-profile)
+profile | p)
   set_profile "$2"
   ;;
-version)
+version | -v | --version)
   echo "$(basename "$0") (c) 2021 by Ivo Woltring"
   echo "Version ${VERSION}"
   exit 0
   ;;
-idea)
+idea | i)
   set_profile_for_idea_project
   exit 0
   ;;
