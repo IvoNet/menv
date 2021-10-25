@@ -45,7 +45,7 @@ brew help
 # Special thanks
 
 - [TheCheerfulDev](https://github.com/TheCheerfulDev/) for the nice 
-  improvements and creat new feature requests.
+  improvements and great new feature requests.
 
 
 # Todo
