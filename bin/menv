@@ -12,8 +12,7 @@ VERSION="!!!VERSION!!!"
 MENV_PROFILE=".menv_profile"
 SYSTEM_DEFAULT_PROFILE_NAME="system default"
 
-USAGE=$(
-  cat <<EOF
+USAGE=$(cat <<EOF
 Usage: ${green}menv${reset} <command> [<args>]
 
 ${green}active${reset}             Show active profile.
@@ -140,6 +139,8 @@ print_active_profile() {
   elif [[ -n $MAVEN_OPTS ]]; then
     echo -e "System specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
   fi
+
+  java -version
 
 }
 

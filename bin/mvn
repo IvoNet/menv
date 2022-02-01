@@ -46,6 +46,7 @@ fi
 
 if [ "$PROFILE" == "$system_default_profile" ]; then
   echo -e "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}${PROFILE}${reset}]"
+  java -version
   print_mvn_opts_if_default_available
   exec "${MVN}" "$@"
 fi
@@ -59,6 +60,7 @@ if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
 	else
 		print_mvn_opts_if_default_available
 	fi
+	java -version
   ${MVN} --settings "${HOME}/.menv/settings.xml.${PROFILE}" --global-settings "${HOME}/.menv/settings.xml.${PROFILE}" "$@"
 	export MAVEN_OPTS=$MAVEN_OPTS_ORIG
 else
