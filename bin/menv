@@ -104,7 +104,7 @@ save_orig_settings_xml() {
 }
 
 list_settings() {
-  find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml./- /g"
+  find "${HOME}/.menv/" -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml./- /g"
 }
 
 find_local_version_file() {
