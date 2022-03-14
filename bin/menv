@@ -145,7 +145,7 @@ print_active_profile() {
 }
 
 get_profiles() {
-  found=$(find "${HOME}"/.menv -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
+  found=$(find "${HOME}/.menv/" -maxdepth 1 -regex '.*/settings\.xml.*' | sort | sed "s/^.*settings.xml.//g")
   if [[ -z "$found" ]]; then
     count=0
   else
