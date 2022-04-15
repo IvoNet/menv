@@ -8,7 +8,7 @@ blue="$(tput setaf 4)"
 
 system_default_profile="system default"
 
-print_mvn_opts_if_default_available(){
+print_mvn_opts_if_default_available() {
   if [[ -n $MAVEN_OPTS ]]; then
     echo -e "[${blue}${bold}INFO${reset}] Using system specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
   fi
@@ -23,7 +23,7 @@ find_local_version_file() {
     if [ -e "${root}/.menv_profile" ]; then
       MENV_PROFILE="${root}/.menv_profile"
       return
-     fi
+    fi
     root="${root%/*}"
   done
 }
@@ -32,7 +32,7 @@ if [[ -f "$(pwd)/mvnw" ]]; then
   MVN="$(pwd)/mvnw"
 else
   # Get the latest installed maven from HomeBrew's cellar
-  MVN="$(find "$(brew --cellar)"/maven -depth 1 -type d|sort|tail -1)/bin/mvn"
+  MVN="$(find "$(brew --cellar)"/maven -depth 1 -type d | sort | tail -1)/bin/mvn"
 fi
 
 find_local_version_file "$MENV_DIR"
@@ -46,7 +46,6 @@ fi
 
 if [ "$PROFILE" == "$system_default_profile" ]; then
   echo -e "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}${PROFILE}${reset}]"
-  java -version
   print_mvn_opts_if_default_available
   exec "${MVN}" "$@"
 fi
@@ -57,12 +56,12 @@ if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
     MAVEN_OPTS_ORIG=$MAVEN_OPTS
     export MAVEN_OPTS=$(<"${HOME}/.menv/${PROFILE}.maven_opts")
     echo -e "[${blue}${bold}INFO${reset}] Using profile specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
-	else
-		print_mvn_opts_if_default_available
-	fi
-	java -version
+  else
+    print_mvn_opts_if_default_available
+  fi
+  java -version
   ${MVN} --settings "${HOME}/.menv/settings.xml.${PROFILE}" --global-settings "${HOME}/.menv/settings.xml.${PROFILE}" "$@"
-	export MAVEN_OPTS=$MAVEN_OPTS_ORIG
+  export MAVEN_OPTS=$MAVEN_OPTS_ORIG
 else
   echo -e "[${yellow}${bold}WARNING${reset}] Profile [${green}${bold}${PROFILE}${reset}] was set but not found. Building with profile: [${green}${bold}${system_default_profile}${reset}]"
   print_mvn_opts_if_default_available
