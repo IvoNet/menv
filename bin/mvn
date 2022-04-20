@@ -59,7 +59,6 @@ if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
   else
     print_mvn_opts_if_default_available
   fi
-  java -version
   ${MVN} --settings "${HOME}/.menv/settings.xml.${PROFILE}" --global-settings "${HOME}/.menv/settings.xml.${PROFILE}" "$@"
   export MAVEN_OPTS=$MAVEN_OPTS_ORIG
 else
