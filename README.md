@@ -26,6 +26,11 @@ menv init
 brew help
 ```
 
+## Environment variables
+
+- MENV_VERBOSE : Verbose mode (default: false)
+- MENV_DISABLE_WRAPPER : Disable the wrapper (default: false)
+
 # License
 
     Copyright 2020 (c) Ivo Woltring
@@ -44,9 +49,8 @@ brew help
 
 # Special thanks
 
-- [TheCheerfulDev](https://github.com/TheCheerfulDev/) for the nice 
+- [TheCheerfulDev](https://github.com/TheCheerfulDev/) for the nice
   improvements and great new feature requests.
-
 
 # Todo
 

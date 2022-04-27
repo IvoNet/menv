@@ -8,9 +8,15 @@ blue="$(tput setaf 4)"
 
 system_default_profile="system default"
 
+print_line() {
+  if [ -z "${MENV_VERBOSE}" ] || [ "${MENV_VERBOSE}" == "true" ]; then
+    echo -e "${1}"
+  fi
+}
+
 print_mvn_opts_if_default_available() {
-  if [[ -n $MAVEN_OPTS ]]; then
-    echo -e "[${blue}${bold}INFO${reset}] Using system specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
+  if [[ -n $MAVEN_OPTS ]] && { [ -z "${MENV_VERBOSE}" ] || [ "${MENV_VERBOSE}" == "true" ]; }; then
+    print_line "[${blue}${bold}INFO${reset}] Using system specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
   fi
 }
 
@@ -28,7 +34,7 @@ find_local_version_file() {
   done
 }
 
-if [[ -f "$(pwd)/mvnw" ]]; then
+if { [ -z "$MENV_DISABLE_WRAPPER" ] || [ "$MENV_DISABLE_WRAPPER" == false ]; } && [ -f "$(pwd)/mvnw" ]; then
   MVN="$(pwd)/mvnw"
 else
   # Get the latest installed maven from HomeBrew's cellar
@@ -45,24 +51,24 @@ else
 fi
 
 if [ "$PROFILE" == "$system_default_profile" ]; then
-  echo -e "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}${PROFILE}${reset}]"
+  print_line "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}${PROFILE}${reset}]"
   print_mvn_opts_if_default_available
   exec "${MVN}" "$@"
 fi
 
 if [[ -f "${HOME}/.menv/settings.xml.${PROFILE}" ]]; then
-  echo -e "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}${PROFILE}${reset}]"
+  print_line "[${blue}${bold}INFO${reset}] Building with profile: [${green}${bold}${PROFILE}${reset}]"
   if [ "$PROFILE" != "$system_default_profile" ] && [[ -f "${HOME}/.menv/${PROFILE}.maven_opts" ]]; then
     MAVEN_OPTS_ORIG=$MAVEN_OPTS
     export MAVEN_OPTS=$(<"${HOME}/.menv/${PROFILE}.maven_opts")
-    echo -e "[${blue}${bold}INFO${reset}] Using profile specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
+    print_line "[${blue}${bold}INFO${reset}] Using profile specific MAVEN_OPTS: [${green}${bold}${MAVEN_OPTS}${reset}]"
   else
     print_mvn_opts_if_default_available
   fi
   ${MVN} --settings "${HOME}/.menv/settings.xml.${PROFILE}" --global-settings "${HOME}/.menv/settings.xml.${PROFILE}" "$@"
   export MAVEN_OPTS=$MAVEN_OPTS_ORIG
 else
-  echo -e "[${yellow}${bold}WARNING${reset}] Profile [${green}${bold}${PROFILE}${reset}] was set but not found. Building with profile: [${green}${bold}${system_default_profile}${reset}]"
+  print_line "[${yellow}${bold}WARNING${reset}] Profile [${green}${bold}${PROFILE}${reset}] was set but not found. Building with profile: [${green}${bold}${system_default_profile}${reset}]"
   print_mvn_opts_if_default_available
   exec "${MVN}" "$@"
 fi
