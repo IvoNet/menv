@@ -30,6 +30,7 @@ brew help
 
 - MENV_VERBOSE : Verbose mode (default: false)
 - MENV_DISABLE_WRAPPER : Disable the wrapper (default: false)
+  A wrapper is the potentially available `mvnw.*` script in a project.
 
 # License
 
