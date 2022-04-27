@@ -28,7 +28,7 @@ brew help
 
 ## Environment variables
 
-- MENV_VERBOSE : Verbose mode (default: false)
+- MENV_VERBOSE : Verbose mode (default: true)
 - MENV_DISABLE_WRAPPER : Disable the wrapper (default: false)
   A wrapper is the potentially available `mvnw.*` script in a project.
 
@@ -51,7 +51,7 @@ brew help
 # Special thanks
 
 - [TheCheerfulDev](https://github.com/TheCheerfulDev/) for the nice
-  improvements and great new feature requests.
+  improvements and great new feature requests and pull requests.
 
 # Todo
 
