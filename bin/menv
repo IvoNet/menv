@@ -12,7 +12,8 @@ VERSION="!!!VERSION!!!"
 MENV_PROFILE=".menv_profile"
 SYSTEM_DEFAULT_PROFILE_NAME="system default"
 
-USAGE=$(cat <<EOF
+USAGE=$(
+  cat <<EOF
 Usage: ${green}menv${reset} <command> [<args>]
 
 ${green}active${reset}             Show active profile.
@@ -23,6 +24,7 @@ ${green}editopts${reset} [profile] Edit the active maven_opt or for the provided
                    See naming convention below for more information.
 ${green}help${reset}               This help.
 ${green}idea${reset}               Override IntelliJ maven settings.xml to the ${green}profile${reset} one.
+${green}mvnlocal${reset}           Override current maven project/.mvn folder to the ${green}profile${reset} settings.
 ${green}init${reset}               Initialize menv for mvn.
 ${green}list${reset}               Lists all possible profiles you can choose from.
 ${green}new${reset} <profile>      Create a new ${green}profile${reset}. See naming convention below for
@@ -126,6 +128,15 @@ retrieve_active_profile() {
   else
     ACTIVE_PROFILE="${SYSTEM_DEFAULT_PROFILE_NAME}"
   fi
+}
+
+retrieve_active_options() {
+  if [ "${ACTIVE_PROFILE}" != "${SYSTEM_DEFAULT_PROFILE_NAME}" ] && [[ -f "${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts" ]]; then
+    ACTIVE_OPTIONS=$(<"${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts")
+  elif [[ -n $MAVEN_OPTS ]]; then
+    ACTIVE_OPTIONS="${MAVEN_OPTS}"
+  fi
+  echo -n "${ACTIVE_OPTIONS}" |pbcopy
 }
 
 print_active_profile() {
@@ -302,6 +313,53 @@ unset_profile_for_idea_project() {
   echo -e "Profile [${green}${bold}${ACTIVE_PROFILE}${reset}] removed for this idea project."
   #  sed -i '' '/<component name="MavenImportPreferences">/,/<\/component>/d' .idea/workspace.xml
   sed -i '' '/<option name="generalSettings">/,/<\/option>/d' .idea/workspace.xml
+
+  exit 0
+
+}
+
+set_mvn_local_settings() {
+
+  if [[ ! -f "pom.xml" ]]; then
+    echo "Not a maven project or maven project root."
+    exit 1
+  fi
+
+  retrieve_active_profile
+  if [ "${ACTIVE_PROFILE}" == "${SYSTEM_DEFAULT_PROFILE_NAME}" ]; then
+    echo "System default profile seems to be active. No special config is needed."
+    exit 0
+  fi
+
+  if [[ ! -f "${HOME}/.menv/settings.xml.${ACTIVE_PROFILE}" ]]; then
+    echo "No menv profile available."
+    exit 1
+  fi
+
+  mkdir -p "${PWD}/.mvn" 2>/dev/null
+
+  if [[ -f "${PWD}/.mvn/maven.config" ]]; then
+    echo "Maven config already present."
+    echo "Please adjust the maven config file manually if needed."
+  else
+    echo "--settings ${HOME}/.menv/settings.xml.${ACTIVE_PROFILE}" >"${PWD}/.mvn/maven.config"
+    echo "Maven config set."
+  fi
+
+  if [[ -f "${HOME}/.menv/${ACTIVE_PROFILE}.maven_opts" ]]; then
+    retrieve_active_options
+    echo "The MAVEN_OPTS for the active profile have also been copied to your clipboard."
+    if [[ ! -f "${PWD}/.mvn/jvm.config" ]]; then
+      echo "Setting the jvm options for the current project based on the ${green}${ACTIVE_PROFILE}${reset} profile."
+      echo "${ACTIVE_OPTIONS}" >"${PWD}/.mvn/jvm.config"
+    else
+      echo "The ${PWD}/.mvn/jvm.config file already exists."
+      echo "Please adjust the maven options manually if needed."
+    fi
+  fi
+
+  exit 0
+
 }
 
 # creating the menv home if not exists
@@ -471,6 +529,9 @@ version | -v | --version)
   echo "Version ${VERSION}"
   exit 0
   ;;
+mvnlocal | ml)
+  set_mvn_local_settings
+  ;;
 idea | i)
   set_profile_for_idea_project
   exit 0
@@ -480,7 +541,7 @@ rmidea)
   exit 0
   ;;
 safeorig)
-#  hidden feature
+  #  hidden feature
   save_orig_settings_xml
   exit 0
   ;;
