@@ -342,7 +342,8 @@ set_mvn_local_settings() {
     echo "Maven config already present."
     echo "Please adjust the maven config file manually if needed."
   else
-    echo "--settings ${HOME}/.menv/settings.xml.${ACTIVE_PROFILE}" >"${PWD}/.mvn/maven.config"
+    echo "--settings" >"${PWD}/.mvn/maven.config"
+    echo "${HOME}/.menv/settings.xml.${ACTIVE_PROFILE}" >>"${PWD}/.mvn/maven.config"
     echo "Maven config set."
   fi
 
