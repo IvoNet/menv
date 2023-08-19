@@ -38,7 +38,7 @@ if { [ -z "$MENV_DISABLE_WRAPPER" ] || [ "$MENV_DISABLE_WRAPPER" == false ]; } &
   MVN="$(pwd)/mvnw"
 else
   # Get the latest installed maven from HomeBrew's cellar
-  MVN="$(find "$(brew --cellar)"/maven -depth 1 -type d | sort | tail -1)/bin/mvn"
+  MVN="$(find "$(brew --cellar)"/maven -maxdepth 1 -type d | sort | tail -1)/bin/mvn"
 fi
 
 find_local_version_file "$MENV_DIR"
