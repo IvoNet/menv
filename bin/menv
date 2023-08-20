@@ -91,7 +91,7 @@ die() {
 }
 
 set_orig_settings_xml() {
-  orig_settings="$(find "$(brew --cellar)"/maven -depth 1 -type d | sort | tail -1)/libexec/conf/settings.xml"
+  orig_settings="$(find "$(brew --cellar)"/maven -maxdepth 1 -type d | sort | tail -1)/libexec/conf/settings.xml"
 }
 
 save_orig_settings_xml() {
@@ -526,7 +526,7 @@ profile | p)
   set_profile "$2"
   ;;
 version | -v | --version)
-  echo "$(basename "$0") (c) 2021 by Ivo Woltring"
+  echo "$(basename "$0") (c) 2023 by Ivo Woltring"
   echo "Version ${VERSION}"
   exit 0
   ;;
