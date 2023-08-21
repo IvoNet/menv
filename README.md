@@ -23,7 +23,7 @@ menv init
 # Usage
 
 ```bash
-brew help
+menv help
 ```
 
 ## Environment variables
