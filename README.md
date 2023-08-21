@@ -6,7 +6,8 @@ With this command you can set a folder (structure) to a specific maven profile a
 
 # Prerequisites
 
-- MacOS based computer
+- MacOS / Linux based computer
+- [Homebrew](https://brew.sh/) installed
 - maven already installed through [brew](https://brew.sh/)
 
 # Install
