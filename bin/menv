@@ -52,6 +52,11 @@ Naming convention:
     These files will be seen as custom MAVEN_OPTS for the profiles.
     It can contain 1 line with all the MAVEN_OPTS in it.
     If this file exists it will overrule the system MAVEN_OPTS if it exists.
+
+Menv completion:
+
+  If you wish to make use of menv completion, add the following line to your .bashrc or .zshrc:
+    source <(menv completion)
 EOF
 )
 
@@ -136,7 +141,7 @@ retrieve_active_options() {
   elif [[ -n $MAVEN_OPTS ]]; then
     ACTIVE_OPTIONS="${MAVEN_OPTS}"
   fi
-  echo -n "${ACTIVE_OPTIONS}" |pbcopy
+  echo -n "${ACTIVE_OPTIONS}" | pbcopy
 }
 
 print_active_profile() {
@@ -484,6 +489,20 @@ new_profile() {
   fi
 }
 
+function completion() {
+  SOURCE=${BASH_SOURCE[0]}
+  while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+    DIR=$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)
+    SOURCE=$(readlink "$SOURCE")
+    [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+  DIR=$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)
+
+  cat ${DIR}/../libexec/bin/menv-completion.sh
+
+  exit 0
+}
+
 # initial save of the original settings.xml
 if [[ ! -f "${HOME}/.menv/.activated" ]]; then
   save_orig_settings_xml
@@ -544,6 +563,10 @@ rmidea)
 safeorig)
   #  hidden feature
   save_orig_settings_xml
+  exit 0
+  ;;
+completion)
+  completion
   exit 0
   ;;
 *)
